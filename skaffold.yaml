@@ -1,0 +1,57 @@
+apiVersion: skaffold/v4beta9
+kind: Config
+metadata:
+  name: grafana
+
+profiles:
+  - name: dru
+    deploy:
+      helm:
+        releases:
+
+          - name: grafana
+            remoteChart: grafana/grafana
+            namespace: grafana
+            createNamespace: true
+            setValueTemplates:
+              datasources:
+                datasources.yaml:
+                  apiVersion: 1
+                  datasources:
+                    - name: Loki
+                      type: loki
+                      url: "http://loki-loki-distributed-gateway.grafana-loki.svc.cluster.local"
+                      access: proxy
+                      isDefault: true
+                      version: 1
+                      editable: true
+                  deleteDatasources: []
+
+          - name: loki
+            remoteChart: grafana/loki-distributed
+            namespace: grafana-loki
+            createNamespace: true
+            valuesFiles: 
+              - loki-distributed-overrides.yaml
+
+          - name: promtail
+            remoteChart: grafana/promtail
+            namespace: grafana-loki
+            createNamespace: true
+            valuesFiles:
+              - promtail-overrides.yaml
+
+portForward:
+
+  - resourceType: service
+    resourceName: grafana
+    namespace: grafana
+    port: 80
+    localPort: 3000
+
+  - resourceType: daemonset
+    resourceName: promtail
+    namespace: grafana-loki
+    port: 3101
+    localPort: 3101
+
